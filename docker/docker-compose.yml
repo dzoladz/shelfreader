@@ -1,0 +1,55 @@
+# -------------------------------------------------------------------------------------------------------------
+# ❤️ Use Compose Spec: https://www.compose-spec.io/ ❤️
+#
+# This file builds a containerized instance of Shelfreader behind Traefik as a reverse proxy. Shelfreader
+# image is built locally, The images for Traefik is pulled from the respective authorities on Docker Hub.
+# The configuration and user database is bind-mounted to the project root's data directory
+# -------------------------------------------------------------------------------------------------------------
+version: "3"
+#----------------------------------------------------
+# ESTABLISH GATEWAY FOR NETWORK TRAFFIC TRAEFIK
+#----------------------------------------------------
+networks:
+  gateway:
+    external: true
+  shelfreader:
+    internal: true
+
+#----------------------------------------------------
+# USE DOCKER VOLUMES TO PERSIST DATA
+#----------------------------------------------------
+#volumes:
+#  db:
+#    driver: local
+#  reports:
+#    driver: local
+
+#----------------------------------------------------
+# [STACK]
+#
+# Traefik - SSL Termination and Routing
+# CC-Plus - Multiservice Application Container
+#----------------------------------------------------
+services:
+  shelfreader:
+    image: dzoladz/shelfreader:latest
+    container_name: shelfreader
+    restart: unless-stopped
+#    volumes:
+#      - reports:/usr/local/stats_reports
+#      - db:/var/lib/mysql
+    labels:
+    #--------------------------------------------------------------------#
+    # Define the behavior and rules of CC-Plus w/ Traefik                #
+    #--------------------------------------------------------------------#
+      - "traefik.enable=true" # Enable traefik on this container
+      - "traefik.http.routers.shelfreader.entrypoints=http" # Enable HTTP entrypoint for [shelfreader]
+      - "traefik.http.routers.shelfreader.rule=Host(`shelfreader.derekzoladz.com`)" # Define HTTP host
+      - "traefik.http.routers.shelfreader.middlewares=redirect" # Enforce HTTPS redirect
+      - "traefik.http.routers.shelfreader-ssl.entrypoints=https" # Enable HTTPS entrypoint for [shelfreader-ssl]
+      - "traefik.http.routers.shelfreader-ssl.rule=Host(`shelfreader.derekzoladz.com`)" # Define HTTPS host
+      ###- "traefik.http.routers.shelfreader-ssl.tls.certresolver=letsencrypt" # Use Let's Encrypt
+      - "traefik.http.routers.shelfreader-ssl.tls=true"
+    networks:
+      - gateway
+      - shelfreader
